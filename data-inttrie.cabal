@@ -10,5 +10,5 @@ Author: Luke Palmer <lrpalmer@gmail.com>
 Homepage: http://github.com/luqui/data-inttrie
 Maintainer: Luke Palmer <lrpalmer@gmail.com>
 Build-Type: Simple
-Build-Depends: base
+Build-Depends: base >= 3 && <= 4.1
 Exposed-Modules: Data.IntTrie
