@@ -32,14 +32,14 @@ data IntTrie a = IntTrie (BitTrie a) a (BitTrie a)  -- negative, 0, positive
 data BitTrie a = BitTrie a (BitTrie a) (BitTrie a)
 
 instance Functor BitTrie where
-    fmap f (BitTrie x l r) = BitTrie (f x) (fmap f l) (fmap f r)
+    fmap f ~(BitTrie x l r) = BitTrie (f x) (fmap f l) (fmap f r)
 
 instance Applicative BitTrie where
     pure x = fix (\g -> BitTrie x g g)
-    BitTrie f fl fr <*> BitTrie x xl xr = BitTrie (f x) (fl <*> xl) (fr <*> xr)
+    ~(BitTrie f fl fr) <*> ~(BitTrie x xl xr) = BitTrie (f x) (fl <*> xl) (fr <*> xr)
 
 instance Functor IntTrie where
-    fmap f (IntTrie neg z pos) = IntTrie (fmap f neg) (f z) (fmap f pos)
+    fmap f ~(IntTrie neg z pos) = IntTrie (fmap f neg) (f z) (fmap f pos)
 
 instance Applicative IntTrie where
     pure x = IntTrie (pure x) x (pure x)
@@ -48,14 +48,14 @@ instance Applicative IntTrie where
 
 -- | Apply the trie to an argument.  This is the semantic map.
 apply :: (Ord b, Bits b) => IntTrie a -> b -> a
-apply (IntTrie neg z pos) x =
+apply ~(IntTrie neg z pos) x =
     case compare x 0 of
         LT -> applyPositive neg (-x)
         EQ -> z
         GT -> applyPositive pos x
 
 applyPositive :: (Bits b) => BitTrie a -> b -> a
-applyPositive (BitTrie one even odd) x
+applyPositive ~(BitTrie one even odd) x
     | x == 1 = one
     | testBit x 0 = applyPositive odd (shift x (-1))
     | otherwise   = applyPositive even (shift x (-1))
@@ -76,14 +76,14 @@ identityPositive = go
 -- > apply (modify x f t) i | i == x = f (apply t i)
 -- >                        | otherwise = apply t i
 modify :: (Ord b, Bits b) => b -> (a -> a) -> IntTrie a -> IntTrie a
-modify x f (IntTrie neg z pos) =
+modify x f ~(IntTrie neg z pos) =
     case compare x 0 of
         LT -> IntTrie (modifyPositive (-x) f neg) z pos
         EQ -> IntTrie neg (f z) pos
         GT -> IntTrie neg z (modifyPositive x f pos)
 
 modifyPositive :: (Bits b) => b -> (a -> a) -> BitTrie a -> BitTrie a
-modifyPositive x f (BitTrie one even odd)
+modifyPositive x f ~(BitTrie one even odd)
     | x == 1      = BitTrie (f one) even odd
     | testBit x 0 = BitTrie one even (modifyPositive x f odd)
     | otherwise   = BitTrie one (modifyPositive x f even) odd
