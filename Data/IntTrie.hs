@@ -57,8 +57,8 @@ apply ~(IntTrie neg z pos) x =
 applyPositive :: (Bits b) => BitTrie a -> b -> a
 applyPositive ~(BitTrie one even odd) x
     | x == 1 = one
-    | testBit x 0 = applyPositive odd (shift x (-1))
-    | otherwise   = applyPositive even (shift x (-1))
+    | testBit x 0 = applyPositive odd (x `shiftR` 1)
+    | otherwise   = applyPositive even (x `shiftR` 1)
 
 -- | The identity trie.  
 --
@@ -69,7 +69,7 @@ identity = IntTrie (fmap negate identityPositive) 0 identityPositive
 identityPositive :: (Bits a) => BitTrie a
 identityPositive = go
     where
-    go = BitTrie 1 (fmap (\n -> shift n 1) go) (fmap (\n -> shift n 1 .|. 1) go)
+    go = BitTrie 1 (fmap (`shiftL` 1) go) (fmap (\n -> (n `shiftL` 1) .|. 1) go)
 
 -- | Modify the function at one point
 --
@@ -85,8 +85,8 @@ modify x f ~(IntTrie neg z pos) =
 modifyPositive :: (Bits b) => b -> (a -> a) -> BitTrie a -> BitTrie a
 modifyPositive x f ~(BitTrie one even odd)
     | x == 1      = BitTrie (f one) even odd
-    | testBit x 0 = BitTrie one even (modifyPositive x f odd)
-    | otherwise   = BitTrie one (modifyPositive x f even) odd
+    | testBit x 0 = BitTrie one even (modifyPositive (x `shiftR` 1) f odd)
+    | otherwise   = BitTrie one (modifyPositive (x `shiftR` 1) f even) odd
 
 -- | Overwrite the function at one point
 --
