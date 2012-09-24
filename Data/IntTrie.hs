@@ -47,14 +47,14 @@ instance Applicative IntTrie where
         IntTrie (fneg <*> xneg) (fz xz) (fpos <*> xpos)
 
 -- | Apply the trie to an argument.  This is the semantic map.
-apply :: (Ord b, Bits b) => IntTrie a -> b -> a
+apply :: (Ord b, Num b, Bits b) => IntTrie a -> b -> a
 apply ~(IntTrie neg z pos) x =
     case compare x 0 of
         LT -> applyPositive neg (-x)
         EQ -> z
         GT -> applyPositive pos x
 
-applyPositive :: (Bits b) => BitTrie a -> b -> a
+applyPositive :: (Num b, Bits b) => BitTrie a -> b -> a
 applyPositive ~(BitTrie one even odd) x
     | x == 1 = one
     | testBit x 0 = applyPositive odd (x `shiftR` 1)
@@ -63,10 +63,10 @@ applyPositive ~(BitTrie one even odd) x
 -- | The identity trie.  
 --
 -- > apply identity = id
-identity :: (Bits a) => IntTrie a
+identity :: (Num a, Bits a) => IntTrie a
 identity = IntTrie (fmap negate identityPositive) 0 identityPositive
 
-identityPositive :: (Bits a) => BitTrie a
+identityPositive :: (Num a, Bits a) => BitTrie a
 identityPositive = go
     where
     go = BitTrie 1 (fmap (`shiftL` 1) go) (fmap (\n -> (n `shiftL` 1) .|. 1) go)
@@ -75,14 +75,14 @@ identityPositive = go
 --
 -- > apply (modify x f t) i | i == x = f (apply t i)
 -- >                        | otherwise = apply t i
-modify :: (Ord b, Bits b) => b -> (a -> a) -> IntTrie a -> IntTrie a
+modify :: (Ord b, Num b, Bits b) => b -> (a -> a) -> IntTrie a -> IntTrie a
 modify x f ~(IntTrie neg z pos) =
     case compare x 0 of
         LT -> IntTrie (modifyPositive (-x) f neg) z pos
         EQ -> IntTrie neg (f z) pos
         GT -> IntTrie neg z (modifyPositive x f pos)
 
-modifyPositive :: (Bits b) => b -> (a -> a) -> BitTrie a -> BitTrie a
+modifyPositive :: (Num b, Bits b) => b -> (a -> a) -> BitTrie a -> BitTrie a
 modifyPositive x f ~(BitTrie one even odd)
     | x == 1      = BitTrie (f one) even odd
     | testBit x 0 = BitTrie one even (modifyPositive (x `shiftR` 1) f odd)
@@ -91,5 +91,5 @@ modifyPositive x f ~(BitTrie one even odd)
 -- | Overwrite the function at one point
 --
 -- > overwrite i x = modify i (const x)
-overwrite :: (Ord b, Bits b) => b -> a -> IntTrie a -> IntTrie a
+overwrite :: (Ord b, Num b, Bits b) => b -> a -> IntTrie a -> IntTrie a
 overwrite i x = modify i (const x)
