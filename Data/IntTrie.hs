@@ -17,7 +17,7 @@
 -------------------------------------------------------------
 
 module Data.IntTrie 
-    ( IntTrie, identity, apply, modify, overwrite )
+    ( IntTrie, identity, apply, modify, modify', overwrite )
 where
 
 import Control.Applicative
@@ -87,6 +87,22 @@ modifyPositive x f ~(BitTrie one even odd)
     | x == 1      = BitTrie (f one) even odd
     | testBit x 0 = BitTrie one even (modifyPositive (x `shiftR` 1) f odd)
     | otherwise   = BitTrie one (modifyPositive (x `shiftR` 1) f even) odd
+
+
+-- | Modify the function at one point (strict version)
+modify' :: (Ord b, Num b, Bits b) => b -> (a -> a) -> IntTrie a -> IntTrie a
+modify' x f (IntTrie neg z pos) =
+    case compare x 0 of
+        LT -> (IntTrie $! modifyPositive' (-x) f neg) z pos
+        EQ -> (IntTrie neg $! f z) pos
+        GT -> IntTrie neg z $! modifyPositive' x f pos
+
+modifyPositive' :: (Num b, Bits b) => b -> (a -> a) -> BitTrie a -> BitTrie a
+modifyPositive' x f (BitTrie one even odd)
+    | x == 1      = (BitTrie $! f one) even odd
+    | testBit x 0 = BitTrie one even $! modifyPositive' (x `shiftR` 1) f odd
+    | otherwise   = (BitTrie one $! modifyPositive' (x `shiftR` 1) f even) odd
+
 
 -- | Overwrite the function at one point
 --
