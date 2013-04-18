@@ -48,14 +48,14 @@ instance Applicative IntTrie where
 
 -- | Apply the trie to an argument.  This is the semantic map.
 apply :: (Ord b, Num b, Bits b) => IntTrie a -> b -> a
-apply ~(IntTrie neg z pos) x =
+apply (IntTrie neg z pos) x =
     case compare x 0 of
         LT -> applyPositive neg (-x)
         EQ -> z
         GT -> applyPositive pos x
 
 applyPositive :: (Num b, Bits b) => BitTrie a -> b -> a
-applyPositive ~(BitTrie one even odd) x
+applyPositive (BitTrie one even odd) x
     | x == 1 = one
     | testBit x 0 = applyPositive odd (x `shiftR` 1)
     | otherwise   = applyPositive even (x `shiftR` 1)
