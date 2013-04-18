@@ -23,6 +23,7 @@ where
 import Control.Applicative
 import Data.Bits
 import Data.Function (fix)
+import Data.Monoid (Monoid(..))
 
 -- | A trie from integers to values of type a. 
 -- 
@@ -38,6 +39,10 @@ instance Applicative BitTrie where
     pure x = fix (\g -> BitTrie x g g)
     ~(BitTrie f fl fr) <*> ~(BitTrie x xl xr) = BitTrie (f x) (fl <*> xl) (fr <*> xr)
 
+instance Monoid a => Monoid (BitTrie a) where
+    mempty = pure mempty
+    mappend = liftA2 mappend
+
 instance Functor IntTrie where
     fmap f ~(IntTrie neg z pos) = IntTrie (fmap f neg) (f z) (fmap f pos)
 
@@ -45,6 +50,10 @@ instance Applicative IntTrie where
     pure x = IntTrie (pure x) x (pure x)
     IntTrie fneg fz fpos <*> IntTrie xneg xz xpos = 
         IntTrie (fneg <*> xneg) (fz xz) (fpos <*> xpos)
+
+instance Monoid a => Monoid (IntTrie a) where
+    mempty = pure mempty
+    mappend = liftA2 mappend
 
 -- | Apply the trie to an argument.  This is the semantic map.
 apply :: (Ord b, Num b, Bits b) => IntTrie a -> b -> a
