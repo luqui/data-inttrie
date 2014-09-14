@@ -17,10 +17,12 @@
 -------------------------------------------------------------
 
 module Data.IntTrie 
-    ( IntTrie, identity, apply, modify, modify', overwrite )
+    ( IntTrie, identity, apply, modify, modify', overwrite, mirror,
+      modifyAscList, modifyAscList', modifyDecList, modifyDecList' )
 where
 
 import Control.Applicative
+import Control.Arrow (first, second)
 import Data.Bits
 import Data.Function (fix)
 import Data.Monoid (Monoid(..))
@@ -118,3 +120,73 @@ modifyPositive' x f (BitTrie one even odd)
 -- > overwrite i x = modify i (const x)
 overwrite :: (Ord b, Num b, Bits b) => b -> a -> IntTrie a -> IntTrie a
 overwrite i x = modify i (const x)
+
+
+-- | Negate the domain of the function
+--
+-- > apply (mirror t) i = apply t (-i)
+-- > mirror . mirror = id
+mirror :: IntTrie a -> IntTrie a
+mirror ~(IntTrie neg z pos) = IntTrie pos z neg
+
+
+-- | Modify the function at a (potentially infinite) list of points in ascending order
+--
+-- > modifyAscList [(i0, f0)..(iN, fN)] = modify i0 f0 . ... . modify iN fN
+modifyAscList :: (Ord b, Num b, Bits b) => [(b, a -> a)] -> IntTrie a -> IntTrie a
+modifyAscList = modifyAscListX . map (second (\f a -> BitTrie $ f a))
+
+-- | Strict (in function application) version of modifyAscList
+modifyAscList' :: (Ord b, Num b, Bits b) => [(b, a -> a)] -> IntTrie a -> IntTrie a
+modifyAscList' = modifyAscListX . map (second (\f a -> BitTrie $! f a))
+
+-- | Modify the function at a (potentially infinite) list of points in descending order
+modifyDecList :: (Ord b, Num b, Bits b) => [(b, a -> a)] -> IntTrie a -> IntTrie a
+modifyDecList ifs = mirror . modifyAscList (map (first negate) ifs) . mirror
+
+-- | Strict (in function application) version of modifyDecList
+modifyDecList' :: (Ord b, Num b, Bits b) => [(b, a -> a)] -> IntTrie a -> IntTrie a
+modifyDecList' ifs = mirror . modifyAscList' (map (first negate) ifs) . mirror
+
+modifyAscListX :: (Ord b, Num b, Bits b)
+               => [(b, a -> BitTrie a -> BitTrie a -> BitTrie a)] -> IntTrie a -> IntTrie a
+modifyAscListX ifs ~t@(IntTrie neg z pos) =
+    case break ((>= 0) . fst) ifs of
+        ([],   [])          -> t
+        (nifs, (0, f):ifs') -> let t@(BitTrie z' _ _) = f z t t in
+                               (IntTrie (modifyAscListNegative nifs neg) z')
+                                        (modifyAscListPositive ifs' pos)
+        (nifs, pifs)        -> (IntTrie (modifyAscListNegative nifs neg) z)
+                                        (modifyAscListPositive pifs pos)
+    where modifyAscListNegative = modifyAscListPositive . map (first negate) . reverse
+
+modifyAscListPositive :: (Ord b, Num b, Bits b)
+                      => [(b, a -> BitTrie a -> BitTrie a -> BitTrie a)]
+                      -> BitTrie a -> BitTrie a
+modifyAscListPositive [] t = t
+modifyAscListPositive ((0, _):_) _ =
+    error "modifyAscList: expected strictly monotonic indices"
+modifyAscListPositive ifs@((i, f):_) ~(BitTrie one even odd) = constr' even' odd' where
+    (constr', ifs')   = if i == 1 then (f one, tail ifs) else (BitTrie one, ifs)
+    even'             = modifyAscListPositive ifsEven even
+    odd'              = modifyAscListPositive ifsOdd  odd
+    (ifsOdd, ifsEven) = both (map $ first (`shiftR` 1)) $ partitionIndices ifs'
+    both f (x, y)     = (f x, f y)
+
+-- Like `partition (flip testBit 0 . fst)`, except that this version addresses the
+-- problem of infinite lists of only odd or only even indices by injecting an `id`
+-- into the other result list wherever there are two evens or two odds in a row.
+-- This allows `modifyAscListPositive` to return a value as soon as the next index is
+-- higher than the current location in the trie instead of scanning for the end of
+-- the list, which for infinite lists may never be reached.
+partitionIndices :: (Num b, Bits b)
+                 =>  [(b, a -> BitTrie a -> BitTrie a -> BitTrie a)]
+                 -> ([(b, a -> BitTrie a -> BitTrie a -> BitTrie a)]
+                    ,[(b, a -> BitTrie a -> BitTrie a -> BitTrie a)])
+partitionIndices []           = ([], [])
+partitionIndices [x]          = if testBit (fst x) 0 then ([x], []) else ([], [x])
+partitionIndices (x:xs@(y:_)) = case testBit (fst x) 0 of
+    False -> (if testBit (fst y) 0 then odd else pad:odd, x:even)
+    True  -> (x:odd, if testBit (fst y) 0 then pad:even else even)
+    where ~(odd, even) = partitionIndices xs
+          pad = (fst y - 1, BitTrie . id)
