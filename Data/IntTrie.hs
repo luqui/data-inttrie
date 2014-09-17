@@ -17,8 +17,8 @@
 -------------------------------------------------------------
 
 module Data.IntTrie 
-    ( IntTrie, identity, apply, modify, modify', overwrite, mirror,
-      modifyAscList, modifyAscList', modifyDescList, modifyDescList' )
+    ( IntTrie, identity, apply, modify, modify', overwrite,
+      mirror, modifyAscList, modifyDescList )
 where
 
 import Control.Applicative
@@ -134,40 +134,25 @@ mirror ~(IntTrie neg z pos) = IntTrie pos z neg
 --
 -- > modifyAscList [(i0, f0)..(iN, fN)] = modify i0 f0 . ... . modify iN fN
 modifyAscList :: (Ord b, Num b, Bits b) => [(b, a -> a)] -> IntTrie a -> IntTrie a
-modifyAscList = modifyAscListX . map (second (\f a -> BitTrie $ f a))
-
--- | Like modifyAscList, but apply the functions strictly as the new tree is constructed
-modifyAscList' :: (Ord b, Num b, Bits b) => [(b, a -> a)] -> IntTrie a -> IntTrie a
-modifyAscList' = modifyAscListX . map (second (\f a -> BitTrie $! f a))
+modifyAscList ifs ~t@(IntTrie neg z pos) =
+    case break ((>= 0) . fst) ifs of
+        ([],   [])          -> t
+        (nifs, (0, f):pifs) -> IntTrie (modifyAscListNegative nifs neg) (f z)
+                                       (modifyAscListPositive pifs pos)
+        (nifs, pifs)        -> IntTrie (modifyAscListNegative nifs neg) z
+                                       (modifyAscListPositive pifs pos)
+    where modifyAscListNegative = modifyAscListPositive . map (first negate) . reverse
 
 -- | Modify the function at a (potentially infinite) list of points in descending order
 modifyDescList :: (Ord b, Num b, Bits b) => [(b, a -> a)] -> IntTrie a -> IntTrie a
 modifyDescList ifs = mirror . modifyAscList (map (first negate) ifs) . mirror
 
--- | Like modifyDescList, but apply the functions strictly as the new tree is constructed
-modifyDescList' :: (Ord b, Num b, Bits b) => [(b, a -> a)] -> IntTrie a -> IntTrie a
-modifyDescList' ifs = mirror . modifyAscList' (map (first negate) ifs) . mirror
-
-modifyAscListX :: (Ord b, Num b, Bits b)
-               => [(b, a -> BitTrie a -> BitTrie a -> BitTrie a)] -> IntTrie a -> IntTrie a
-modifyAscListX ifs ~t@(IntTrie neg z pos) =
-    case break ((>= 0) . fst) ifs of
-        ([],   [])          -> t
-        (nifs, (0, f):pifs) -> let t@(BitTrie z' _ _) = f z t t in
-                               (IntTrie (modifyAscListNegative nifs neg) z')
-                                        (modifyAscListPositive pifs pos)
-        (nifs, pifs)        -> (IntTrie (modifyAscListNegative nifs neg) z)
-                                        (modifyAscListPositive pifs pos)
-    where modifyAscListNegative = modifyAscListPositive . map (first negate) . reverse
-
-modifyAscListPositive :: (Ord b, Num b, Bits b)
-                      => [(b, a -> BitTrie a -> BitTrie a -> BitTrie a)]
-                      -> BitTrie a -> BitTrie a
+modifyAscListPositive :: (Ord b, Num b, Bits b) => [(b, a -> a)] -> BitTrie a -> BitTrie a
 modifyAscListPositive [] t = t
 modifyAscListPositive ((0, _):_) _ =
     error "modifyAscList: expected strictly monotonic indices"
-modifyAscListPositive ifs@((i, f):_) ~(BitTrie one even odd) = constr' even' odd' where
-    (constr', ifs')   = if i == 1 then (f one, tail ifs) else (BitTrie one, ifs)
+modifyAscListPositive ifs@((i, f):_) ~(BitTrie one even odd) = BitTrie one' even' odd' where
+    (one', ifs')      = if i == 1 then (f one, tail ifs) else (one, ifs)
     even'             = modifyAscListPositive ifsEven even
     odd'              = modifyAscListPositive ifsOdd  odd
     (ifsOdd, ifsEven) = both (map $ first (`shiftR` 1)) $ partitionIndices ifs'
@@ -179,14 +164,11 @@ modifyAscListPositive ifs@((i, f):_) ~(BitTrie one even odd) = constr' even' odd
 -- This allows `modifyAscListPositive` to return a value as soon as the next index is
 -- higher than the current location in the trie instead of scanning for the end of
 -- the list, which for infinite lists may never be reached.
-partitionIndices :: (Num b, Bits b)
-                 =>  [(b, a -> BitTrie a -> BitTrie a -> BitTrie a)]
-                 -> ([(b, a -> BitTrie a -> BitTrie a -> BitTrie a)]
-                    ,[(b, a -> BitTrie a -> BitTrie a -> BitTrie a)])
+partitionIndices :: (Num b, Bits b) => [(b, a -> a)] -> ([(b, a -> a)], [(b, a -> a)])
 partitionIndices []           = ([], [])
 partitionIndices [x]          = if testBit (fst x) 0 then ([x], []) else ([], [x])
 partitionIndices (x:xs@(y:_)) = case testBit (fst x) 0 of
     False -> (if testBit (fst y) 0 then odd else pad:odd, x:even)
     True  -> (x:odd, if testBit (fst y) 0 then pad:even else even)
     where ~(odd, even) = partitionIndices xs
-          pad = (fst y - 1, BitTrie . id)
+          pad = (fst y - 1, id)
