@@ -18,7 +18,7 @@
 
 module Data.IntTrie 
     ( IntTrie, identity, apply, modify, modify', overwrite, mirror,
-      modifyAscList, modifyAscList', modifyDecList, modifyDecList' )
+      modifyAscList, modifyAscList', modifyDescList, modifyDescList' )
 where
 
 import Control.Applicative
@@ -141,12 +141,12 @@ modifyAscList' :: (Ord b, Num b, Bits b) => [(b, a -> a)] -> IntTrie a -> IntTri
 modifyAscList' = modifyAscListX . map (second (\f a -> BitTrie $! f a))
 
 -- | Modify the function at a (potentially infinite) list of points in descending order
-modifyDecList :: (Ord b, Num b, Bits b) => [(b, a -> a)] -> IntTrie a -> IntTrie a
-modifyDecList ifs = mirror . modifyAscList (map (first negate) ifs) . mirror
+modifyDescList :: (Ord b, Num b, Bits b) => [(b, a -> a)] -> IntTrie a -> IntTrie a
+modifyDescList ifs = mirror . modifyAscList (map (first negate) ifs) . mirror
 
 -- | Strict (in function application) version of modifyDecList
-modifyDecList' :: (Ord b, Num b, Bits b) => [(b, a -> a)] -> IntTrie a -> IntTrie a
-modifyDecList' ifs = mirror . modifyAscList' (map (first negate) ifs) . mirror
+modifyDescList' :: (Ord b, Num b, Bits b) => [(b, a -> a)] -> IntTrie a -> IntTrie a
+modifyDescList' ifs = mirror . modifyAscList' (map (first negate) ifs) . mirror
 
 modifyAscListX :: (Ord b, Num b, Bits b)
                => [(b, a -> BitTrie a -> BitTrie a -> BitTrie a)] -> IntTrie a -> IntTrie a
