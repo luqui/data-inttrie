@@ -136,7 +136,7 @@ mirror ~(IntTrie neg z pos) = IntTrie pos z neg
 modifyAscList :: (Ord b, Num b, Bits b) => [(b, a -> a)] -> IntTrie a -> IntTrie a
 modifyAscList = modifyAscListX . map (second (\f a -> BitTrie $ f a))
 
--- | Strict (in function application) version of modifyAscList
+-- | Like modifyAscList, but apply the functions strictly as the new tree is constructed
 modifyAscList' :: (Ord b, Num b, Bits b) => [(b, a -> a)] -> IntTrie a -> IntTrie a
 modifyAscList' = modifyAscListX . map (second (\f a -> BitTrie $! f a))
 
@@ -144,7 +144,7 @@ modifyAscList' = modifyAscListX . map (second (\f a -> BitTrie $! f a))
 modifyDescList :: (Ord b, Num b, Bits b) => [(b, a -> a)] -> IntTrie a -> IntTrie a
 modifyDescList ifs = mirror . modifyAscList (map (first negate) ifs) . mirror
 
--- | Strict (in function application) version of modifyDecList
+-- | Like modifyDescList, but apply the functions strictly as the new tree is constructed
 modifyDescList' :: (Ord b, Num b, Bits b) => [(b, a -> a)] -> IntTrie a -> IntTrie a
 modifyDescList' ifs = mirror . modifyAscList' (map (first negate) ifs) . mirror
 
