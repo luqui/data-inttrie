@@ -153,9 +153,9 @@ modifyAscListX :: (Ord b, Num b, Bits b)
 modifyAscListX ifs ~t@(IntTrie neg z pos) =
     case break ((>= 0) . fst) ifs of
         ([],   [])          -> t
-        (nifs, (0, f):ifs') -> let t@(BitTrie z' _ _) = f z t t in
+        (nifs, (0, f):pifs) -> let t@(BitTrie z' _ _) = f z t t in
                                (IntTrie (modifyAscListNegative nifs neg) z')
-                                        (modifyAscListPositive ifs' pos)
+                                        (modifyAscListPositive pifs pos)
         (nifs, pifs)        -> (IntTrie (modifyAscListNegative nifs neg) z)
                                         (modifyAscListPositive pifs pos)
     where modifyAscListNegative = modifyAscListPositive . map (first negate) . reverse
