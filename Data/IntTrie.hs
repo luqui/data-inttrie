@@ -26,6 +26,7 @@ import Control.Arrow (first, second)
 import Data.Bits
 import Data.Function (fix)
 import Data.Monoid (Monoid(..))
+import Data.Semigroup (Semigroup(..))
 
 -- | A trie from integers to values of type a. 
 -- 
@@ -41,6 +42,9 @@ instance Applicative BitTrie where
     pure x = fix (\g -> BitTrie x g g)
     ~(BitTrie f fl fr) <*> ~(BitTrie x xl xr) = BitTrie (f x) (fl <*> xl) (fr <*> xr)
 
+instance Semigroup a => Semigroup (BitTrie a) where
+    (<>) = liftA2 (<>)
+
 instance Monoid a => Monoid (BitTrie a) where
     mempty = pure mempty
     mappend = liftA2 mappend
@@ -52,6 +56,9 @@ instance Applicative IntTrie where
     pure x = IntTrie (pure x) x (pure x)
     IntTrie fneg fz fpos <*> IntTrie xneg xz xpos = 
         IntTrie (fneg <*> xneg) (fz xz) (fpos <*> xpos)
+
+instance Semigroup a => Semigroup (IntTrie a) where
+    (<>) = liftA2 (<>)
 
 instance Monoid a => Monoid (IntTrie a) where
     mempty = pure mempty
