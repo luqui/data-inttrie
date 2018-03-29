@@ -174,8 +174,8 @@ modifyAscListPositive ifs@((i, f):_) ~(BitTrie one even odd) = BitTrie one' even
 partitionIndices :: (Num b, Bits b) => [(b, a -> a)] -> ([(b, a -> a)], [(b, a -> a)])
 partitionIndices []           = ([], [])
 partitionIndices [x]          = if testBit (fst x) 0 then ([x], []) else ([], [x])
-partitionIndices (x:xs@(y:_)) = case testBit (fst x) 0 of
-    False -> (if testBit (fst y) 0 then odd else pad:odd, x:even)
-    True  -> (x:odd, if testBit (fst y) 0 then pad:even else even)
-    where ~(odd, even) = partitionIndices xs
-          pad = (fst y - 1, id)
+partitionIndices (x:xs@(y:_)) = if testBit (fst x) 0
+                                   then (if testBit (fst y) 0 then odd else pad:odd, x:even)
+                                   else (x:odd, if testBit (fst y) 0 then pad:even else even)
+  where ~(odd, even) = partitionIndices xs
+        pad = (fst y - 1, id)
