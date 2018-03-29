@@ -30,10 +30,7 @@ source-repository head
 
 library
   exposed-modules:     Data.IntTrie
-  -- other-modules:
-  -- other-extensions:
+  build-depends:       base <5
+  default-language:    Haskell2010
   if (impl(ghc < 8))
     build-depends:     semigroups
-  build-depends:       base >=4.10 && <4.11
-  -- hs-source-dirs:
-  default-language:    Haskell2010
